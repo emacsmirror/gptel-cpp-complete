@@ -189,8 +189,7 @@ Similar patterns in this repository:
 ;; ------------------------------------------------------------
 ;; Overlay Management
 ;; ------------------------------------------------------------
-(defvar gptel-cpp-complete--overlay nil
-  "Overlay used to display GPTel completions.")
+(defvar-local gptel-cpp-complete--overlay nil)
 
 (defun gptel-cpp-complete--clear-overlay ()
   "Remove GPTel completion overlay."
@@ -220,24 +219,41 @@ Similar patterns in this repository:
 ;; ------------------------------------------------------------
 ;; GPTel Interaction
 ;; ------------------------------------------------------------
-(defvar gptel-cpp-complete--regenerate-timer nil
-  "Idle timer for GPTel regeneration.")
+(defvar-local gptel-cpp-complete--regenerate-timer nil)
+(defvar-local gptel-cpp-complete--request nil)
+(defvar-local gptel-cpp-complete--in-flight nil)
+
+(defun gptel-cpp-complete--cancel-request ()
+  "Cancel any in-flight gptel request for this buffer."
+  (when gptel-cpp-complete--request
+    (ignore-errors
+      (gptel-abort gptel-cpp-complete--request))
+    (setq gptel-cpp-complete--request nil)))
 
 (defun gptel-cpp-complete--handle-response (response _info)
   "Display GPTel RESPONSE."
+  (setq gptel-cpp-complete--in-flight nil
+        gptel-cpp-complete--request nil)
   (when (and response (stringp response))
     (message "")
     (gptel-cpp-complete--show-overlay response)))
+
+(defun gptel-cpp-complete--fire-request ()
+  "Start a new AI completion request, canceling any in-flight one."
+  (gptel-cpp-complete--cancel-request)
+  (setq gptel-cpp-complete--in-flight t
+        gptel-cpp-complete--request
+        (gptel-request
+            (gptel-cpp-complete--build-prompt)
+          :system gptel-cpp-complete--system-prompt
+          :callback #'gptel-cpp-complete--handle-response)))
 
 ;;;###autoload
 (defun gptel-cpp-complete ()
   "Request GPTel code completion."
   (interactive)
   (message "Generating completion...")
-  (gptel-request
-      (gptel-cpp-complete--build-prompt)
-    :system gptel-cpp-complete--system-prompt
-    :callback #'gptel-cpp-complete--handle-response))
+  (gptel-cpp-complete--fire-request))
 
 (defun gptel-cpp-complete--schedule-regenerate ()
   "Schedule GPTel completion after idle delay."
@@ -263,15 +279,20 @@ Similar patterns in this repository:
   "Post-command hook driving GPTel completion."
   (when (derived-mode-p 'c++-mode)
     (cond
+     ;; accept
      ((gptel-cpp-complete--last-command-was-ret-p)
       (when (gptel-cpp-complete--overlay-active-p)
-        (delete-char -1))
+        (undo-only))
       (gptel-cpp-complete--accept-overlay))
+     ;; regenerate
      ((gptel-cpp-complete--self-insert-p)
       (gptel-cpp-complete--clear-overlay)
+      (gptel-cpp-complete--cancel-request)
       (gptel-cpp-complete--schedule-regenerate))
+     ;; cancel
      (t
-      (gptel-cpp-complete--clear-overlay)))))
+      (gptel-cpp-complete--clear-overlay)
+      (gptel-cpp-complete--cancel-request)))))
 
 (add-hook 'post-command-hook #'gptel-cpp-complete--post-command)
 
