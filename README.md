@@ -40,6 +40,20 @@ Recommended `clangd` invocation:
 clangd --background-index --clang-tidy
 ```
 
+Recommended `eglot` configuration:
+```emacs lisp
+(add-to-list 'eglot-server-programs
+                 '((c-mode c-ts-mode c++-mode c++-ts-mode objc-mode)
+                   . ("clangd"
+                      "--compile-commands-dir=./build/"
+                      "--background-index"
+                      "--clang-tidy"
+                      "--completion-style=detailed"
+                      "--header-insertion=never"
+                      "--pch-storage=memory"
+                      "--malloc-trim")))
+```
+
 ---
 
 ## Installation
