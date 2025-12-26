@@ -25,7 +25,8 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;; C++ code completion using eglot + gptel + ag
+
+;;; C++ code completion powered by eglot, gptel, ag
 
 ;;; Code:
 
