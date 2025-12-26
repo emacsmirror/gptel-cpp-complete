@@ -60,3 +60,10 @@ Clone the repository and add it to your load path:
 
 (add-to-list 'load-path "/path/to/gptel-cpp-complete")
 (require 'gptel-cpp-complete)
+
+---
+
+# Screenshots
+
+![call-graph-demo-1.gif](img/call-graph-demo-1.gif)
+![call-graph-demo-2.gif](img/call-graph-demo-2.gif)
