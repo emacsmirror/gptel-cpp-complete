@@ -392,8 +392,6 @@ Callees of this function:
     (cond
      ;; accept
      ((gptel-cpp-complete--last-command-was-ret-p)
-      (when (gptel-cpp-complete--overlay-active-p)
-        (undo-only))
       (gptel-cpp-complete--accept-overlay))
      ;; regenerate
      ((gptel-cpp-complete--self-insert-p)
