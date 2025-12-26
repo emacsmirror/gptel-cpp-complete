@@ -1,4 +1,28 @@
-;;; init-gptel-completion.el --- GPTel-powered C++ completion -*- lexical-binding: t -*-
+;;; gptel-cpp-complete.el --- GPTel-powered C++ completion -*- lexical-binding: t -*-
+
+;; Copyright (C) 2025 by Huming Chen
+
+;; Author: Huming Chen <chenhuming@gmail.com>
+;; URL: https://github.com/beacoder/gptel-cpp-complete
+;; Version: 0.0.1
+;; Created: 2025-12-26
+;; Keywords: programming, convenience
+;; Package-Requires: ((emacs "29.1") (eglot "1.19"))
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;; C++ code completion using eglot + gptel + ag
@@ -32,7 +56,7 @@
           (treesit-end-of-defun)
           (buffer-substring-no-properties beg (point)))))))
 
-(defun my/eglot--in-scope-symbols+kind ()
+(defun gptel-cpp-complete--in-scope-symbols+kind ()
   "Return list of local symbols from Eglot."
   (when-let* ((server (eglot--current-server-or-lose))
               (pos (eglot--pos-to-lsp-position (point)))
@@ -148,7 +172,7 @@ Similar patterns in this repository:
 (defun gptel-cpp-complete--build-prompt ()
   "Assemble GPTel completion prompt."
   (let* ((func (or (gptel-cpp-complete--cpp-current-function) "N/A"))
-         (symbols+kind (or (my/eglot--in-scope-symbols+kind) '()))
+         (symbols+kind (or (gptel-cpp-complete--in-scope-symbols+kind) '()))
          (symbols (or (delete-dups (mapcar #'car symbols+kind)) '()))
          (s+k (or (mapcar #'cdr symbols+kind) '()))
          (patterns (or (gptel-cpp-complete--ag-similar-patterns s+k) "None found")))
@@ -247,5 +271,5 @@ Similar patterns in this repository:
 (add-hook 'post-command-hook #'gptel-cpp-complete--post-command)
 
 
-(provide 'init-gptel-completion)
-;;; init-gptel-completion.el ends here
+(provide 'gptel-cpp-complete)
+;;; gptel-cpp-complete.el ends here
