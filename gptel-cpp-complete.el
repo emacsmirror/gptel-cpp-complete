@@ -162,7 +162,7 @@ Output rules:
 - Do NOT repeat existing code unless necessary for completion"
   "Completion system prompt.")
 
-(defconst gptel-cpp-complete--completion-prompt
+(defconst gptel-cpp-complete--user-prompt
   "Current function:
 ```cpp
 %s
@@ -181,7 +181,7 @@ Similar patterns in this repository:
          (symbols (or (delete-dups (mapcar #'car symbols+kind)) '()))
          (s+k (or (mapcar #'cdr symbols+kind) '()))
          (patterns (or (gptel-cpp-complete--ag-similar-patterns s+k) "None found")))
-    (format gptel-cpp-complete--completion-prompt
+    (format gptel-cpp-complete--user-prompt
             func
             (string-join symbols ", ")
             patterns)))
