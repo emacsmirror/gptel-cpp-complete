@@ -7,7 +7,7 @@
 ;; Version: 0.0.1
 ;; Created: 2025-12-26
 ;; Keywords: programming, convenience
-;; Package-Requires: ((emacs "29.1") (eglot "1.19") (gptel "0.9.8"))
+;; Package-Requires: ((emacs "30.1") (eglot "1.19") (gptel "0.9.8"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -65,7 +65,7 @@
   "Return list of local symbols from Eglot."
   (when-let* ((server (eglot--current-server-or-lose))
               (pos (eglot--pos-to-lsp-position (point)))
-              (params `(:textDocument (:uri ,(eglot--path-to-uri (buffer-file-name)))
+              (params `(:textDocument (:uri ,(eglot-path-to-uri (buffer-file-name)))
                                       :position ,pos
                                       :context (:triggerKind 1)))
               (completion (jsonrpc-request server
@@ -91,7 +91,7 @@
            finally return `(:funcs ,funcs :vars ,vars :members ,members)))
 
 (defun gptel-cpp-complete--safe-subseq (seq start end)
-  "Safely extracts a subseq from SEQ starting at START index up to END (not included)."
+  "Safely extracts a subseq from SEQ from START to END (not included)."
   (when seq
     (cl-subseq seq start (min end (length seq)))))
 
