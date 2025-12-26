@@ -65,4 +65,4 @@ Clone the repository and add it to your load path:
 
 ## Screenshots
 
-![video.webm](video.webm)
+![demo.gif](demo.gif)
