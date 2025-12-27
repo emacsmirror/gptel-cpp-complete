@@ -64,6 +64,8 @@ Clone the repository and add it to your load path:
 ```emacs lisp
 (add-to-list 'load-path "/path/to/gptel-cpp-complete")
 (require 'gptel-cpp-complete)
+(dolist (c-mode-hook '(c-mode-common-hook c-ts-mode-hook c++-ts-mode-hook))
+  (add-hook c-mode-hook #'gptel-cpp-complete-mode))
 ```
 
 ---
