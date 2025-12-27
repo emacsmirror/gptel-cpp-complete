@@ -4,7 +4,7 @@
 
 ;; Author: Huming Chen <chenhuming@gmail.com>
 ;; URL: https://github.com/beacoder/gptel-cpp-complete
-;; Version: 0.1.5
+;; Version: 0.1.6
 ;; Created: 2025-12-26
 ;; Keywords: programming, convenience
 ;; Package-Requires: ((emacs "30.1") (eglot "1.19") (gptel "0.9.8"))
@@ -45,6 +45,7 @@
 ;; 0.1.3 Adding `/no_think' for system prompt
 ;; 0.1.4 Replace run-with-idle-time with run-with-timer
 ;; 0.1.5 Fix <return> conflict between `corfu-insert' and `gptel-cpp-complete'
+;; 0.1.6 Remove duplicated texts from completion
 
 ;;; Code:
 
@@ -93,6 +94,20 @@
   "Safely extracts a subseq from SEQ from START to END (not included)."
   (when seq
     (cl-subseq seq start (min end (length seq)))))
+
+(defun gptel-cpp-complete--non-whitespace-bounds ()
+  "Return bounds of the non-whitespace sequence at point."
+  (save-excursion
+    (let ((start (progn (skip-chars-backward "^ \t\n") (point)))
+          (end   (progn (skip-chars-forward  "^ \t\n") (point))))
+      (cons start end))))
+
+(defun gptel-cpp-complete--non-whitespace-at-point ()
+  "Return the non-whitespace sequence at point as a string, or nil."
+  (let ((bounds (gptel-cpp-complete--non-whitespace-bounds)))
+    (when bounds
+      (buffer-substring-no-properties
+       (car bounds) (cdr bounds)))))
 
 ;; ------------------------------------------------------------
 ;; Context Extraction
@@ -353,12 +368,13 @@ Callees of this function:
                (propertize text 'face 'shadow)))
 
 (defun gptel-cpp-complete--accept-overlay ()
-  "Insert overlay text into buffer."
-  (let* ((text (overlay-get gptel-cpp-complete--overlay 'after-string))
-         (text (substring-no-properties text)))
+  "Insert overlay completion into buffer."
+  (let* ((completion (overlay-get gptel-cpp-complete--overlay 'after-string))
+         (completion (substring-no-properties completion))
+         (text (gptel-cpp-complete--non-whitespace-at-point)))
     (gptel-cpp-complete--clear-overlay)
-    (when text
-      (insert text))))
+    (when completion
+      (insert (string-remove-prefix text completion)))))
 
 ;;;###autoload
 (defun gptel-cpp-complete-return ()
