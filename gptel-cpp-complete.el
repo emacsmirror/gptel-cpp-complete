@@ -345,10 +345,23 @@ Callees of this function:
 
 (defun gptel-cpp-complete--accept-overlay ()
   "Insert overlay text into buffer."
-  (when (gptel-cpp-complete--overlay-active-p)
-    (let ((text (overlay-get gptel-cpp-complete--overlay 'after-string)))
-      (gptel-cpp-complete--clear-overlay)
+  (let* ((text (overlay-get gptel-cpp-complete--overlay 'after-string))
+         (text (substring-no-properties text)))
+    (gptel-cpp-complete--clear-overlay)
+    (when text
       (insert text))))
+
+;;;###autoload
+(defun gptel-cpp-complete-return ()
+  "Handle completion, `corfu-insert' and `newline'."
+  (interactive)
+  (cond
+   ((gptel-cpp-complete--overlay-active-p)
+    (gptel-cpp-complete--accept-overlay))
+   ((and (boundp 'corfu--index) (>= corfu--index 0))
+    (call-interactively #'corfu-insert))
+   (t
+    (call-interactively #'newline))))
 
 ;; ------------------------------------------------------------
 ;; GPTel Interaction
@@ -401,26 +414,14 @@ Callees of this function:
   "Return non-nil if command was self insert."
   (eq this-command 'self-insert-command))
 
-(defun gptel-cpp-complete--last-command-was-ret-p ()
-  "Return non-nil if last command was RET/RETURN."
-  (memq last-command-event '(?\r return)))
-
 (defun gptel-cpp-complete--post-command ()
   "Post-command hook driving GPTel completion."
   (when (derived-mode-p 'c++-mode)
-    (cond
-     ;; accept
-     ((gptel-cpp-complete--last-command-was-ret-p)
-      (gptel-cpp-complete--accept-overlay))
-     ;; regenerate
-     ((gptel-cpp-complete--self-insert-p)
-      (gptel-cpp-complete--clear-overlay)
-      (gptel-cpp-complete--cancel-request)
-      (gptel-cpp-complete--schedule-regenerate))
-     ;; cancel
-     (t
-      (gptel-cpp-complete--clear-overlay)
-      (gptel-cpp-complete--cancel-request)))))
+    (gptel-cpp-complete--clear-overlay)
+    (gptel-cpp-complete--cancel-request)
+    (when (gptel-cpp-complete--self-insert-p)
+      ;; regenerate
+      (gptel-cpp-complete--schedule-regenerate))))
 
 ;; ------------------------------------------------------------
 ;; Mode Definition
@@ -428,6 +429,7 @@ Callees of this function:
 (defvar gptel-cpp-complete-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c TAB") #'gptel-cpp-complete)
+    (define-key map (kbd "<return>") #'gptel-cpp-complete-return)
     map))
 
 (define-minor-mode gptel-cpp-complete-mode
