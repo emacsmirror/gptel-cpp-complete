@@ -313,7 +313,7 @@ Callees of this function:
          (outgoing (or (cdr calls) "None found")))
     (format gptel-cpp-complete--user-prompt
             func
-            (string-join symbols ", ")
+            (string-join symbols "\n\n")
             patterns
             incomming
             outgoing)))
