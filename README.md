@@ -73,3 +73,14 @@ Clone the repository and add it to your load path:
 ## Screenshots
 
 ![demo.gif](demo.gif)
+
+---
+
+## Contributing
+Yes, please do! See [CONTRIBUTING](CONTRIBUTING.md) for guidelines.
+
+---
+
+## License
+
+See [LICENSE](LICENSE). Copyright (c) 2025 Huming Chen <chenhuming@gmail.com>
