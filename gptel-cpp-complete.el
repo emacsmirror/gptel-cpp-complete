@@ -44,7 +44,7 @@
 ;; 0.1.2 Add minor mode `gptel-cpp-complete-mode'
 ;; 0.1.3 Adding `/no_think' for system prompt
 ;; 0.1.4 Replace run-with-idle-time with run-with-timer
-;; 0.1.5 Fix <return> conflict between `corfu--insert' and `gptel-cpp-complete'
+;; 0.1.5 Fix <return> conflict between `corfu-insert' and `gptel-cpp-complete'
 
 ;;; Code:
 
