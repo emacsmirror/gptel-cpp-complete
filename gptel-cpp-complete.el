@@ -158,19 +158,23 @@
    (gptel-cpp-complete--safe-subseq (plist-get classified :members) 0 1)))
 
 (defun gptel-cpp-complete--ag-pattern-for-symbol (symbol)
-  "Format SYMBOL for searching with ag."
-  (let ((name (plist-get symbol :label)))
+  "Format SYMBOL for searching with `ag'."
+  (let* ((name (plist-get symbol :label))
+         (kind (plist-get symbol :kind)))
     (cond
-     ((memq (plist-get symbol :kind) '(2 3 4))
+     ((memq kind '(2 3 4)) ;; method/function/ctor
       (when (string-match "\\b\\([A-Za-z_][A-Za-z0-9_]*\\)\\s-*(" name)
         (setq name (match-string 1 name)))
-      (format "%s\\s*\\(" name))
-     ((memq (plist-get symbol :kind) '(5 10 20))
-      (format "(\\.|->)%s\\b" name))
-     (t name))))
+      (format "\\b%s\\s*\\(" name))
+     ((eq kind 20) ;; enum member
+      (format "::%s\\b" name))
+     ((memq kind '(5 10)) ;; field/property
+      (format "(\\.|->|::)%s\\b" name))
+     (t
+      (format "\\b%s\\b" name)))))
 
 (defun gptel-cpp-complete--ag-search-pattern (pattern)
-  "Search PATTERN using ag."
+  "Search PATTERN using `ag'."
   (shell-command-to-string
    (format "ag --cpp --nobreak --noheading -C 3 \"%s\" | head -n 30"
            pattern)))
