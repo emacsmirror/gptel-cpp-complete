@@ -4,7 +4,7 @@
 
 ;; Author: Huming Chen <chenhuming@gmail.com>
 ;; URL: https://github.com/beacoder/gptel-cpp-complete
-;; Version: 0.1.6
+;; Version: 0.1.7
 ;; Created: 2025-12-26
 ;; Keywords: programming, convenience
 ;; Package-Requires: ((emacs "30.1") (eglot "1.19") (gptel "0.9.8"))
@@ -46,6 +46,7 @@
 ;; 0.1.4 Replace run-with-idle-time with run-with-timer
 ;; 0.1.5 Fix <return> conflict between `corfu-insert' and `gptel-cpp-complete'
 ;; 0.1.6 Remove duplicated texts from completion
+;; 0.1.7 Add more detailed trigger conditions
 
 ;;; Code:
 
@@ -70,6 +71,10 @@
   "Include caller-hierarchy, takes more time."
   :type 'boolean
   :group 'gptel-cpp-complete)
+
+(defcustom gptel-cpp-complete-min-token-length 3
+  "Minimum identifier length to trigger GPTel completion."
+  :type 'integer)
 
 ;; ------------------------------------------------------------
 ;; Helpers
@@ -108,6 +113,21 @@
     (when bounds
       (buffer-substring-no-properties
        (car bounds) (cdr bounds)))))
+
+(defun gptel-cpp-complete--looking-back-p (str)
+  "Return non-nil if text before point ends with STR."
+  (let ((len (length str)))
+    (and (>= (point) (+ (point-min) len))
+         (string=
+          (buffer-substring-no-properties
+           (- (point) len) (point))
+          str))))
+
+(defun gptel-cpp-complete--alpha-char-p (c)
+  "Return non-nil if C is alpha char."
+  (and (characterp c)
+       (or (and (>= c ?a) (<= c ?z))
+           (and (>= c ?A) (<= c ?Z)))))
 
 ;; ------------------------------------------------------------
 ;; Context Extraction
@@ -440,16 +460,41 @@ Callees of this function:
 ;; ------------------------------------------------------------
 ;; Input Handling
 ;; ------------------------------------------------------------
-(defun gptel-cpp-complete--self-insert-p ()
-  "Return non-nil if command was self insert."
-  (eq this-command 'self-insert-command))
+(defun gptel-cpp-complete--structural-trigger-p ()
+  "Return non-nil if point is at a structural C++ completion site."
+  (or
+   ;; foo.
+   (eq last-command-event ?.)
+   ;; foo->
+   (gptel-cpp-complete--looking-back-p "->")
+   ;; std::
+   (gptel-cpp-complete--looking-back-p "::")))
+
+(defun gptel-cpp-complete--identifier-trigger-p ()
+  "Return non-nil if we should trigger completion on identifier typing."
+  (let ((c last-command-event))
+    (when (gptel-cpp-complete--alpha-char-p c)
+      (let ((tok (gptel-cpp-complete--non-whitespace-at-point)))
+        (and tok
+             (>= (length tok)
+                 gptel-cpp-complete-min-token-length))))))
+
+(defun gptel-cpp-complete--should-trigger-p ()
+  "Return non-nil if we should trigger GPT completion."
+  (and
+   (eq this-command 'self-insert-command)
+   (or
+    ;; strong trigger point
+    (gptel-cpp-complete--structural-trigger-p)
+    ;; weak trigger point
+    (gptel-cpp-complete--identifier-trigger-p))))
 
 (defun gptel-cpp-complete--post-command ()
   "Post-command hook driving GPTel completion."
   (when (derived-mode-p 'c++-mode)
     (gptel-cpp-complete--clear-overlay)
     (gptel-cpp-complete--cancel-request)
-    (when (gptel-cpp-complete--self-insert-p)
+    (when (gptel-cpp-complete--should-trigger-p)
       ;; regenerate
       (gptel-cpp-complete--schedule-regenerate))))
 
