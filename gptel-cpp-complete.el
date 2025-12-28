@@ -141,12 +141,6 @@
     (beginning-of-line)
     (looking-at-p "\\s-*#")))
 
-(defun gptel-cpp-complete--context-allowed-p ()
-  "Return non-nil if completion is allowed at point."
-  (and
-   (not (gptel-cpp-complete--in-string-or-comment-p))
-   (not (gptel-cpp-complete--in-preprocessor-p))))
-
 ;; ------------------------------------------------------------
 ;; Context Extraction
 ;; ------------------------------------------------------------
@@ -496,6 +490,12 @@ Callees of this function:
         (and tok
              (>= (length tok)
                  gptel-cpp-complete-min-token-length))))))
+
+(defun gptel-cpp-complete--context-allowed-p ()
+  "Return non-nil if completion is allowed at point."
+  (and
+   (not (gptel-cpp-complete--in-string-or-comment-p))
+   (not (gptel-cpp-complete--in-preprocessor-p))))
 
 (defun gptel-cpp-complete--should-trigger-p ()
   "Return non-nil if we should trigger GPT completion."
