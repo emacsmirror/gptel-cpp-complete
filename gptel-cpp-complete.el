@@ -285,7 +285,7 @@
               collect
               (gptel-cpp-complete--snippet-from-range
                (plist-get (plist-get call :to) :uri)
-               (plist-get call :toRange)))
+               (plist-get call :fromRanges)))
      "\n\n")))
 
 (defun gptel-cpp-complete--call-hierarchy-context ()
