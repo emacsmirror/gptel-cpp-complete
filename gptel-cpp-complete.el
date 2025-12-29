@@ -454,10 +454,8 @@ Callees of this function:
           :system gptel-cpp-complete--system-prompt
           :callback #'gptel-cpp-complete--handle-response)))
 
-;;;###autoload
 (defun gptel-cpp-complete ()
   "Request GPTel code completion."
-  (interactive)
   (message "Generating completion...")
   (gptel-cpp-complete--fire-request))
 
