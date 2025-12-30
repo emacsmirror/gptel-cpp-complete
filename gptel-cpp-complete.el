@@ -496,4 +496,4 @@ Callees of this function:
 
 
 (provide 'gptel-cpp-complete)
-;;; gptel-cpp-complete.el ends her
+;;; gptel-cpp-complete.el ends here
