@@ -4,7 +4,7 @@
 
 ;; Author: Huming Chen <chenhuming@gmail.com>
 ;; URL: https://github.com/beacoder/gptel-cpp-complete
-;; Version: 0.1.6
+;; Version: 0.1.7
 ;; Created: 2025-12-26
 ;; Keywords: programming, convenience
 ;; Package-Requires: ((emacs "30.1") (eglot "1.19") (gptel "0.9.8"))
@@ -46,6 +46,7 @@
 ;; 0.1.4 Replace run-with-idle-time with run-with-timer
 ;; 0.1.5 Fix <return> conflict between `corfu-insert' and `gptel-cpp-complete'
 ;; 0.1.6 Remove duplicated texts from completion
+;; 0.1.7 Retrieve document-symbols and fix ag search issue
 
 ;;; Code:
 
@@ -69,6 +70,16 @@
 (defcustom gptel-cpp-complete-include-call-hierarchy t
   "Include caller-hierarchy, takes more time."
   :type 'boolean
+  :group 'gptel-cpp-complete)
+
+(defcustom gptel-cpp-complete-completion-max 8
+  "Max number of completion symbols used for validation."
+  :type 'integer
+  :group 'gptel-cpp-complete)
+
+(defcustom gptel-cpp-complete-ag-cmd "ag --cpp --nobreak --noheading -C 3 \"%s\" | cut -d: -f2- | head -n 30"
+  "Ag command to search similar pattern."
+  :type 'string
   :group 'gptel-cpp-complete)
 
 ;; ------------------------------------------------------------
@@ -122,7 +133,124 @@
     (looking-at-p "\\s-*#")))
 
 ;; ------------------------------------------------------------
-;; Context Extraction
+;; Extraction document-in-scope-symbols
+;; ------------------------------------------------------------
+(defun gptel-cpp-complete--document-symbols ()
+  "Return document symbols for current buffer via eglot."
+  (when-let* ((server (eglot--current-server-or-lose))
+              (file   (buffer-file-name)))
+    (ignore-errors
+      (jsonrpc-request
+       server
+       :textDocument/documentSymbol
+       `(:textDocument (:uri ,(eglot-path-to-uri file)))))))
+
+(defun gptel-cpp-complete--flatten-document-symbols-1 (symbols out)
+  "Helper to flatten SYMBOLS (vector or list) into OUT (list)."
+  (cond
+   ((null symbols) out)
+   ((vectorp symbols)
+    (let ((len (length symbols)))
+      (dotimes (i len)
+        (let ((s (aref symbols i)))
+          (push s out)
+          (when-let ((children (plist-get s :children)))
+            (setq out (gptel-cpp-complete--flatten-document-symbols-1 children out))))))
+    out)
+   ((listp symbols)
+    (dolist (s symbols out)
+      (push s out)
+      (when-let ((children (plist-get s :children)))
+        (setq out (gptel-cpp-complete--flatten-document-symbols-1 children out))))
+    out)
+   (t out)))
+
+(defun gptel-cpp-complete--flatten-document-symbols (symbols)
+  "Flatten SYMBOLS into a list."
+  (nreverse (gptel-cpp-complete--flatten-document-symbols-1 symbols nil)))
+
+(defun gptel-cpp-complete--symbol-range (sym)
+  "Return LSP range plist for SYM (DocumentSymbol or SymbolInformation)."
+  (or (plist-get sym :range)
+      (when-let ((loc (plist-get sym :location)))
+        (plist-get loc :range))
+      ;; some servers nest under :location :range start/end keys
+      nil))
+
+(defun gptel-cpp-complete--document-symbol->entry (symbol)
+  "Convert SYMBOL to (label . plist) entry."
+  (let* ((name (or (plist-get symbol :name) (plist-get symbol :label)))
+         (kind (or (plist-get symbol :kind) 0)))
+    (cons
+     name
+     (list
+      :label name
+      :kind  kind
+      :source 'document
+      :range (gptel-cpp-complete--symbol-range symbol)))))
+
+(defun gptel-cpp-complete--document-in-scope-symbols ()
+  "Return list of (label . plist) for symbols defined in the document."
+  (when-let ((symbols (gptel-cpp-complete--document-symbols)))
+    (let* ((flat (gptel-cpp-complete--flatten-document-symbols symbols))
+           (filtered
+            (cl-loop for sym in flat
+                     collect (gptel-cpp-complete--document-symbol->entry sym))))
+      filtered)))
+
+;; ------------------------------------------------------------
+;; Extract completion-symbols
+;; ------------------------------------------------------------
+(defun gptel-cpp-complete--completion-symbols-lite ()
+  "Return a limited list of LSP completion items at point."
+  (when-let* ((server (eglot--current-server-or-lose))
+              (pos    (eglot--pos-to-lsp-position (point)))
+              (params `(:textDocument (:uri ,(eglot-path-to-uri
+                                              (buffer-file-name)))
+                                      :position ,pos
+                                      :context (:triggerKind 1)))
+              (result (jsonrpc-request server
+                                       :textDocument/completion
+                                       params)))
+    (let ((items (cond
+                  ((vectorp result) result)
+                  ((plist-get result :items))
+                  (t nil))))
+      (cl-subseq (append items nil)
+                 0 (min gptel-cpp-complete-completion-max
+                        (length items))))))
+
+(defun gptel-cpp-complete--completion-item->entry (item)
+  "Convert a completion ITEM into an internal symbol entry."
+  (let ((label (plist-get item :label))
+        (kind  (plist-get item :kind)))
+    (cons
+     label
+     (list
+      :label  label
+      :kind   kind
+      :source 'completion))))
+
+(defun gptel-cpp-complete--merge-symbol-entries (doc completion)
+  "Merge DOC and COMPLETION symbol entry lists."
+  (let ((table (make-hash-table :test 'equal)))
+    (dolist (e doc)
+      (puthash (car e) e table))
+    (dolist (e completion)
+      (puthash (car e) e table))
+    (hash-table-values table)))
+
+(defun gptel-cpp-complete--in-scope-symbols+kind ()
+  "Return merged in-scope symbols using document symbols and completion validation."
+  (let* ((doc-syms
+          (gptel-cpp-complete--document-in-scope-symbols))
+         (comp-syms
+          (mapcar #'gptel-cpp-complete--completion-item->entry
+                  (or (gptel-cpp-complete--completion-symbols-lite) '()))))
+    (gptel-cpp-complete--merge-symbol-entries doc-syms comp-syms)))
+
+;; ------------------------------------------------------------
+;; Extraction current function
 ;; ------------------------------------------------------------
 (defun gptel-cpp-complete--cpp-current-function ()
   "Return current C++ function definition as string."
@@ -139,63 +267,53 @@
                 suffix (buffer-substring-no-properties cursor-pos func-end))
           (concat prefix "<-- HERE -->" suffix))))))
 
-(defun gptel-cpp-complete--in-scope-symbols+kind ()
-  "Return list of local symbols from Eglot."
-  (when-let* ((server (eglot--current-server-or-lose))
-              (pos (eglot--pos-to-lsp-position (point)))
-              (params `(:textDocument (:uri ,(eglot-path-to-uri (buffer-file-name)))
-                                      :position ,pos
-                                      :context (:triggerKind 1)))
-              (completion (jsonrpc-request server
-                                           :textDocument/completion
-                                           params)))
-    (let ((items (cond
-                  ((vectorp completion) completion)
-                  ((plist-get completion :items))
-                  (t nil))))
-      (mapcar (lambda (item)
-                (cons
-                 (plist-get item :label)
-                 (list :label (plist-get item :label)
-                       :kind  (plist-get item :kind))))
-              items))))
+;; ------------------------------------------------------------
+;; Extraction similar pattern
+;; ------------------------------------------------------------
 
+;; LSP SymbolKind numbers (for references)
+;; @see https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.languageserver.protocol.symbolkind?view=visualstudiosdk-2022
+;;
+;; 1 File, 2 Module, 3 Namespace, 4 Package, 5 Class, 6 Method,
+;; 7 Property, 8 Field, 9 Constructor, 10 Enum, 11 Interface,
+;; 12 Function, 13 Variable, 14 Constant, 15 String, 16 Number,
+;; 17 Boolean, 18 Array, 19 Object, 20 Key, 21 Null, 22 EnumMember,
+;; 23 Struct, 24 Event, 25 Operator, 26 TypeParameter
 (defun gptel-cpp-complete--classify-symbols (symbols)
   "Classify SYMBOLS into different kind."
   (cl-loop for s in symbols
-           if (memq (plist-get s :kind) '(2 3 4)) collect s into funcs
-           else if (memq (plist-get s :kind) '(6 21)) collect s into vars
-           else if (memq (plist-get s :kind) '(5 10 20)) collect s into members
-           finally return `(:funcs ,funcs :vars ,vars :members ,members)))
+           if (memq (plist-get s :kind) '(6 9 12)) collect s into funcs
+           else if (memq (plist-get s :kind) '(7 8 13 14)) collect s into vars
+           else if (memq (plist-get s :kind) '(5 10 11 23)) collect s into types
+           finally return `(:funcs ,funcs :vars ,vars :types ,types)))
 
 (defun gptel-cpp-complete--select-search-symbols (classified)
   "Select symbols to search based on CLASSIFIED."
   (append
    (gptel-cpp-complete--safe-subseq (plist-get classified :funcs) 0 2)
-   (gptel-cpp-complete--safe-subseq (plist-get classified :members) 0 1)))
+   (gptel-cpp-complete--safe-subseq (plist-get classified :vars) 0 1)
+   (gptel-cpp-complete--safe-subseq (plist-get classified :types) 0 1)))
 
 (defun gptel-cpp-complete--ag-pattern-for-symbol (symbol)
   "Format SYMBOL for searching with `ag'."
   (let* ((name (plist-get symbol :label))
          (kind (plist-get symbol :kind)))
     (cond
-     ((memq kind '(2 3 4)) ;; method/function/ctor
+     ((memq kind '(6 9 12)) ;; method/function/ctor
       (when (string-match "\\b\\([A-Za-z_][A-Za-z0-9_]*\\)\\s-*(" name)
         (setq name (match-string 1 name)))
+      (setq name (gptel-cpp-complete--extract-method-name name))
       (format "\\b%s\\s*\\(" name))
-     ((eq kind 20) ;; enum member
+     ((eq kind 22) ;; enum member
       (format "::%s\\b" name))
-     ((memq kind '(5 10)) ;; field/property
+     ((memq kind '(7 8)) ;; field/property
       (format "(\\.|->|::)%s\\b" name))
      (t
       (format "\\b%s\\b" name)))))
 
 (defun gptel-cpp-complete--ag-search-pattern (pattern)
   "Search PATTERN using `ag'."
-  (shell-command-to-string
-   (format
-    "ag --cpp --nobreak --noheading -C 3 \"%s\" | sed -E 's|^[^:]+:[0-9]+([:-])||; /^[[:space:]]*\/\/.*$/d ' | head -n 100"
-    pattern)))
+  (shell-command-to-string (format gptel-cpp-complete-ag-cmd pattern)))
 
 (defun gptel-cpp-complete--ag-similar-patterns (s-k)
   "Search similar patterns based on S-K."
@@ -208,6 +326,9 @@
               collect (gptel-cpp-complete--ag-search-pattern pat))
      "\n\n")))
 
+;; ------------------------------------------------------------
+;; Extraction caller and callee
+;; ------------------------------------------------------------
 (defun gptel-cpp-complete--call-hierarchy-item ()
   "Prepare call hierarchy item at point."
   (save-excursion
