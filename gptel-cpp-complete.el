@@ -194,7 +194,7 @@
   "Search PATTERN using `ag'."
   (shell-command-to-string
    (format
-    "ag --cpp --nobreak --noheading --nocolor -C 3 \"%s\" | sed -E 's|^[^:]+:[0-9]+[:\-]||; /^--$/d; s/^[[:space:]]+//' | head -n 30"
+    "ag --cpp --nobreak --noheading -C 3 \"%s\" | sed -E 's|^[^:]+:[0-9]+([:-])||; /^[[:space:]]*\/\/.*$/d ' | head -n 100"
     pattern)))
 
 (defun gptel-cpp-complete--ag-similar-patterns (s-k)
@@ -288,10 +288,10 @@
 ;; Prompt Construction
 ;; ------------------------------------------------------------
 (defconst gptel-cpp-complete--system-prompt
-  "You are a C++ code completion assistant operating within a large existing codebase.
+  "You are a C++ code completion assistant operating within a large existing code base.
 
 ## YOUR ROLE
-You act as an intelligent autocomplete that suggests syntactically correct, context-aware continuations using ONLY the provided symbols and patterns.
+You act as an intelligent autocomplete that suggests syntactically correct, context-aware continuations.
 
 ## CONTEXT PROVIDED
 - Current function body (cursor marked with <-- HERE -->)
@@ -305,8 +305,7 @@ You act as an intelligent autocomplete that suggests syntactically correct, cont
 2. **PRESERVE EXISTING CODE** - Do not modify code outside the completion region
 3. **MAINTAIN CONSISTENCY** - Match formatting, indentation, naming, and style
 4. **RESPECT SEMANTICS** - Honor constness, references, lifetimes, and ownership
-5. **COMPILE GUARANTEE** - Produce code that would compile in this codebase
-6. **HARD STOP** - IF REQUIRED SYMBOLS ARE MISSING — output nothing
+5. **COMPILE GUARANTEE** - Produce code that would compile in this code base
 
 ## COMPLETION PRIORITIES (in order)
 1. Use existing helper functions/idioms from similar patterns
@@ -319,13 +318,6 @@ You act as an intelligent autocomplete that suggests syntactically correct, cont
 - No explanations, comments, or markdown formatting
 - No repetition of already-visible code unless syntactically required
 - If ambiguous, output the shortest reasonable completion
-
-## SPECIAL CASES
-- For partial statements: Complete the current expression/statement
-- For new statements: Start with appropriate indentation
-- For method chains: Continue with available methods
-- For type names: Use exact types from in-scope symbols
-- Include necessary argument lists when completing function calls
 
 /no_think"
   "Enhanced system prompt for C++ code completion.")
