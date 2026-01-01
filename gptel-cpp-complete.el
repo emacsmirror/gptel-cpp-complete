@@ -133,7 +133,7 @@
     (looking-at-p "\\s-*#")))
 
 ;; ------------------------------------------------------------
-;; Extraction document-in-scope-symbols
+;; Extraction document-symbols
 ;; ------------------------------------------------------------
 (defun gptel-cpp-complete--document-symbols ()
   "Return document symbols for current buffer via eglot."
