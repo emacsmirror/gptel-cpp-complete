@@ -34,8 +34,9 @@
 ;; desired. And put the following expression into your ~/.emacs.d
 ;;
 ;; (require 'gptel-cpp-complete)
-;; (dolist (c-mode-hook '(c-mode-common-hook c-ts-mode-hook c++-ts-mode-hook))
-;;   (add-hook c-mode-hook #'gptel-cpp-complete-mode))
+;; (when (display-graphic-p)
+;;   (dolist (c-mode-hook '(c-mode-common-hook c-ts-mode-hook c++-ts-mode-hook))
+;;     (add-hook c-mode-hook #'gptel-cpp-complete-mode)))
 
 ;;; Change Log:
 ;;
