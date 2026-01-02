@@ -1,5 +1,7 @@
 # gptel-cpp-complete
 
+[![MELPA](https://melpa.org/packages/gptel-cpp-complete-badge.svg)](https://melpa.org/#/gptel-cpp-complete)
+
 `gptel-cpp-complete` is an experimental package that provides
 **Copilot-style, context-aware C++ code completion** using:
 
