@@ -4,7 +4,7 @@
 
 ;; Author: Huming Chen <chenhuming@gmail.com>
 ;; URL: https://github.com/beacoder/gptel-cpp-complete
-;; Version: 0.1.7
+;; Version: 0.1.8
 ;; Created: 2025-12-26
 ;; Keywords: programming, convenience
 ;; Package-Requires: ((emacs "30.1") (eglot "1.19") (gptel "0.9.8"))
@@ -48,6 +48,7 @@
 ;; 0.1.5 Fix <return> conflict between `corfu-insert' and `gptel-cpp-complete'
 ;; 0.1.6 Remove duplicated texts from completion
 ;; 0.1.7 Retrieve completion-symbols and fix ag search issue
+;; 0.1.8 Show completion only when location didn't change
 
 ;;; Code:
 
@@ -399,6 +400,8 @@ Callees of this function:
 ;; Overlay Management
 ;; ------------------------------------------------------------
 (defvar-local gptel-cpp-complete--overlay nil)
+(defvar-local gptel-cpp-complete--original-buffer nil)
+(defvar-local gptel-cpp-complete--original-position nil)
 
 (defun gptel-cpp-complete--clear-overlay ()
   "Remove GPTel completion overlay."
@@ -460,11 +463,16 @@ Callees of this function:
   (setq gptel-cpp-complete--request nil)
   (when (and response (stringp response))
     (message "")
-    (gptel-cpp-complete--show-overlay response)))
+    (if (and (eq (current-buffer) gptel-cpp-complete--original-buffer)
+             (= (point) gptel-cpp-complete--original-position))
+        (gptel-cpp-complete--show-overlay response)
+      (gptel-cpp-complete--clear-overlay))))
 
 (defun gptel-cpp-complete--fire-request ()
   "Start a new AI completion request, canceling any in-flight one."
-  (setq gptel-cpp-complete--request
+  (setq gptel-cpp-complete--original-buffer (current-buffer)
+        gptel-cpp-complete--original-position (point)
+        gptel-cpp-complete--request
         (gptel-request
             (gptel-cpp-complete--build-prompt)
           :system gptel-cpp-complete--system-prompt
