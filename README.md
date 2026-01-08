@@ -39,12 +39,6 @@ Its sole purpose is **accurate, minimal, inline code continuation**.
 - [`ag`](https://github.com/ggreer/the_silver_searcher)
 - `clangd` with background indexing enabled
 
-Recommended `clangd` invocation:
-
-```bash
-clangd --background-index --clang-tidy
-```
-
 Recommended `eglot` configuration:
 ```emacs lisp
 (use-package eglot
