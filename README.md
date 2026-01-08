@@ -75,6 +75,24 @@ Recommended `tree-sitter` configuration:
                  treesit-font-lock-level 4)))
 ```
 
+Recommended `gptel` configuration:
+```emacs lisp
+(use-package gptel
+   :ensure t
+   :config
+   (setq gptel-model 'deepseek-ai/DeepSeek-V3.2
+         ;; Randomness in response text, 0 to 2
+         gptel-temperature 0
+         gptel-backend
+         ;; free 2000 request per-day, each model 500
+         (gptel-make-openai "Free"
+           :host "api-inference.modelscope.cn"
+           :stream t
+           :key ""
+           :models '(Qwen/Qwen2.5-32B-Instruct
+                     deepseek-ai/DeepSeek-V3.2))))
+```
+
 ---
 
 ## Installation
