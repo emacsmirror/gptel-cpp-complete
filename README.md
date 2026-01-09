@@ -65,12 +65,10 @@ Recommended `eglot` configuration:
 
 Recommended `tree-sitter` configuration:
 ```emacs lisp
- ;; download tree-sitter so files and put them in treesit-grammars folder.
  (when (treesit-available-p)
    (use-package treesit
      :ensure t
      :init (setq treesit-extra-load-path
-                 ;; return dir: gptel-cpp-complete/treesit-grammars
                  (gptel-cpp-complete--get-treesit-extra-load-path)
                  major-mode-remap-alist
                  '((c-mode          . c-ts-mode)
