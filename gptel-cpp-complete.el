@@ -94,10 +94,10 @@
 ;; Helpers
 ;; ------------------------------------------------------------
 (defun gptel-cpp-complete--get-treesit-extra-load-path ()
-   "Get `treesiter' extra load path."
-   (list (expand-file-name
-          "./treesit-grammars/" (file-name-directory
-                                 (or load-file-name (buffer-file-name))))))
+  "Get `treesiter' extra load path."
+  (list (expand-file-name
+         "./" (file-name-directory
+               (or load-file-name (buffer-file-name))))))
 
 (defmacro gptel-cpp-complete--with-which-function-mode (&rest body)
   "Execute BODY with `which-function-mode' enabled, then restore original state."
